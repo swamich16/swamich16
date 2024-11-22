@@ -419,6 +419,7 @@ Community
 Operators without official support.--redhat wont support if we have issue ,who are proving that company help
 
 Marketplace
+
 Commercial operators that you can buy from Red Hat Marketplace.
 
 application team need more  feature all team will go trought helm
