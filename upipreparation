@@ -1,0 +1,143 @@
+installer provisoned infrastructure
+user provisoned infrastructure
+3 master node default and 2 worker node default
+ipi   vs upi
+===========90% will use UPI
+its fully automated procedure to create cluster(if run installer script backend terraform script will execute)  -->  user will create manually(worker load and master node all need to create manually)
+we can scale up and scale down node with one command(its take very less time)    --> manually need to scale (need to change configuation so its take time ) 
+cluster auto scale is possible     --> manually add parameter so default not possible
+3 master node default and 2 worker node default total 5 -->here is 7 ->1 is load balancer,1 bootstrap,3 master node default and 2 worker node default total 7(bootstrap will detroy automatically)
+ipi is not in our control to customize (migrate from aws to azure not posible in ips but upi is possible)
+if any one ask which installation your using blindly say upi
+ipi vs upi main difference in openshift
+In OpenShift, there are two main methods for installing clusters: Installer Provisioned Infrastructure (IPI) and User Provisioned Infrastructure (UPI). Here are the key differences:
+
+Installer Provisioned Infrastructure (IPI)
+Automation: The OpenShift installer automates the provisioning of all infrastructure components, including compute, storage, and networking resources.
+
+Ease of Use: Ideal for smaller deployments or environments where you want a quick and straightforward setup.
+
+Built-in Services: Includes all necessary infrastructure services within the OpenShift cluster.
+
+User Provisioned Infrastructure (UPI)==================================
+Manual Setup: The user is responsible for manually creating and managing all infrastructure components.
+
+Customization: Highly customizable and tunable, making it suitable for enterprise deployments and complex environments.
+
+Infrastructure Requirements: Requires proper configuration of services like DHCP, DNS, proxy, router, NAT, firewall, web hosting, LDAP, TFTP/SFTP server, and NFS.
+
+CRC===code ready container--one redhat script need to execute--it will create one node cluster will create its act as a workernode and master node if we configure as CRC there is no option to scale up  worker node
+sno==single node openshift-->it will create one node cluster will create its act as a workernode and master node but we are  able to add more worker node and intitial node work as master
+
+CodeReady Containers (CRC)=================
+Purpose: CRC is a tool for developers to run a single OpenShift cluster on their local machine for development and testing purposes.
+
+Setup: It uses a single node that acts as both the master and worker node. The installation is lightweight and doesn't require a dedicated infrastructure1.
+
+Configuration: The machine-config and monitoring Operators are disabled by default, which means some parts of the web console might be non-functional.
+
+Use Case: Ideal for developers who need a local OpenShift environment to test and develop applications without needing a full cluster setup.
+
+Single Node OpenShift (SNO)====================
+Purpose: SNO is designed for production environments where a full OpenShift cluster is not required3.
+
+Setup: It involves installing OpenShift on a single physical or virtual machine. The setup is more comprehensive and includes all necessary OpenShift components2.
+
+Configuration: SNO can be fully configured with all OpenShift features, including machine-config and monitoring Operators.
+
+Use Case: Suitable for small-scale production environments or scenarios where a full cluster is not necessary but a production-grade OpenShift environment is still needed.
+
+
+bootstrap--its a temporally node, its create test cluster and testit and once good its transfer to master node and we can delete bootstrap and master will create  worker 
+
+postinstallation we can add window server as a worked node not during install
+
+
+upi prerequisite
+==========
+
+1)dhcp(optional if provide static ip) 
+2.dns(m)--dnsmasq
+3.httpd(option/mandatory)
+4.haproxy for load baclance(mandatory)
+5.some redhat binaries(download from red hat site)--openshift-install,pullsecret
+6.iso/ova/template(redhat core os)
+
+below 3 records mandatory
+api.dev.je2c.com--cluster access with cli--6443
+api-int.dev.j2c.com--used for machine config while scale up and down--22623
+*.apps.dev.j2c.com(* means wildcard)--for route creation we will use it --443
+
+
+
+1.openshift-installer need to download
+2.opneshiftcli binary need to download
+3.generate ssh key fair
+create install-config.yaml file add datacenter,datastore,network,replicas,worknode,masternode
+create manifests with help of openshift-install
+create ignition-configs with help of openshift-install and it created for the bootstrap, control plane, and compute nodes and auth files will genearete(kubeadmin-password,kubeconfig)
+
+===========================================================
+
+load balancer=====
+1.disbale firewall if require /etc/selinux/config,service firewald staus show dead
+2.install haproxy (if not available yum oinstall haproxy)
+3./etc/haproxy/haproxy.cfg
+3.1 api-server-6443
+       we have to add bootstrap,master nodes,once install done we have to remove bootstrap we can remove(if not remove bootrap also fine but its work as round robin so little bit late traffic)
+3.2 machine-config-server-22623
+      we have to add bootstrap,master nodes,once install done we have to remove bootstrap we can remove
+3.3 ingress-router-443
+      we have to add worked nodes
+3.4 ingress-router-80
+      we have to add worked nodes
+
+start service haproxy
+
+download binaries from console.redhat/openshift
+ openshift-installer(./openshift-installer or copy to /usr/local/sbin and bin)
+ pull secret (keep on any file ,its used to to login redhat registry and pull immages)
+OVA (corelinux)
+geneate ssh-key to access node
+
+create one directory config
+cd config;
+generate install-config.yml with openshift-install (openshift-install create install-config --dir=config)or take yml file from another place and modify as per our requirement
+ modify --domain,compute,replicas(0),controlplane,replicas 3,vsphere details like datacenter,datastore,network like vlan,ip adress and pullsecret,sshkeys
+
+cluster proxy--->if your ip not accessable outside ,we can make it available through proxy--if not reachable we have add as per network update 
+openshift-installer wait-for install-complete --log-level debug
+
+before that take back of install-config.yml in another location
+
+--manifests and ignition-configs with openshift-install
+vi manifest/cluser-scheduler-02-config.yml
+masterschedulable=false by default its true true means master will accept pod creation(taint means its not schedule) 
+
+while creatring ignition with openshift-installer it generate auth,master.ign,worker.ign,bootstrap.ign
+ base64 encoding(not accept human readable) need to covert worker.ign,master.ign,bootstrap.ign  
+httpd here used to decrease size of bootstrap.ign
+
+on vsphere====
+rightclick --select-->depoy ovf template--here you have to add ova template-->datacenter-->datastore-->vlan--storage -->that entrys  need to add
+
+right click on ovf and clone worker bootstrap,master
+
+select stoage and customize hardware and add parameter in advance option
+add attribute and values
+questinfo.ignition.config.data,questinfo.ignition.config.data.encoding as base 64,disk.enableuuid as true
+
+in dns we have to add ip address of nodes and map with mac address in /etc/dnsmasq-host
+
+
+power on bootstrap,master,workernode
+
+oc get csr check any pending for approvals if pending approve it then worked node create
+
+
+
+
+
+
+
+
